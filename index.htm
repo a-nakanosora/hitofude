@@ -1,0 +1,209 @@
+<html>
+<head>
+<title>hitofude</title>
+<style>
+body {
+    margin: 0;
+    padding: 0;
+}
+#maincanvas {
+    width: 100%;
+    height: 100%;
+    /*border: 2px solid #abc;*/
+    position: fixed;
+    margin: 0;
+    padding: 0px;
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="maincanvas" width="1" height="1"></canvas>
+
+
+
+<script>
+
+const State = {
+    prevPos: null,
+    canvasWidth: 512,
+    canvasHeight: 512,
+    currentStroke: null,
+    strokes:[],
+
+    backColor: '#222',
+    lineColor: '#ddd',
+}
+
+const elem = {
+    body: document.querySelector('body'),
+    maincanvas: document.querySelector('#maincanvas'),
+}
+
+function entry(){
+    main()
+}
+
+function main(){
+    ///
+    preventMobileScroll()
+
+    ///
+    elem.body.style['background-color'] = State.backColor
+
+    ///
+    elem.maincanvas.width = State.canvasWidth
+    elem.maincanvas.height = State.canvasHeight
+
+    const getPos = function(e){
+        const rect = e.target.getBoundingClientRect()
+        const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left
+        const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top
+        // return {x,y}
+
+        // console.log(e,rect,x,y)
+
+        /// relative to window
+        return {
+            x: x / document.body.clientWidth * State.canvasWidth,
+            y: y / document.body.clientHeight * State.canvasHeight,
+        }
+    }
+
+    const ctx = elem.maincanvas.getContext('2d')
+    const clear = function(){
+        const W = State.canvasWidth
+        const H = State.canvasHeight
+        ctx.clearRect(0,0,W,H)
+    }
+
+    const mdown = function(e){
+        const throttle = ThrottleTime.create()
+
+        console.log('Enstatite')
+
+        const cst = []
+        State.currentStroke = cst
+
+        ctx.strokeStyle = State.lineColor
+        ctx.lineWidth = 5
+
+        const mmove = function(e){
+            if(throttle(1000/60))
+                return
+
+            const pos = getPos(e)
+            // console.log('Brownleeite', pos)
+            const pp = State.prevPos
+            if(pp && !(pp.x===pos.x && pp.y===pos.y)) {
+                ctx.beginPath()
+                ctx.moveTo(pp.x, pp.y)
+                ctx.lineTo(pos.x, pos.y)
+                // ctx.closePath()
+                ctx.stroke()
+            }
+            State.prevPos = pos
+            State.currentStroke.push(pos)
+        }
+
+        const mup = function(e){
+            // mmove(e)
+            clear()
+            State.prevPos = null
+            State.strokes.push(cst)
+            State.currentStroke = null
+            showStrokes()
+
+            elem.maincanvas.removeEventListener('mousemove', mmove)
+            elem.maincanvas.removeEventListener('mouseup', mup)
+            elem.maincanvas.removeEventListener('touchmove', mmove)
+            elem.maincanvas.removeEventListener('touchend', mup)
+        }
+
+        elem.maincanvas.addEventListener('mousemove', mmove)
+        elem.maincanvas.addEventListener('mouseup', mup)
+        elem.maincanvas.addEventListener('touchmove', mmove)
+        elem.maincanvas.addEventListener('touchend', mup)
+        mmove(e)
+    }
+
+    elem.maincanvas.addEventListener('mousedown', mdown)
+    elem.maincanvas.addEventListener('touchstart', mdown)
+    clear()
+
+
+
+    // reload()
+}
+
+
+function preventMobileScroll(){
+    function preventBehavior(e) {
+        e.preventDefault()
+    }
+    document.addEventListener("touchmove", preventBehavior, false);
+}
+
+
+const ThrottleTime = {
+    create: function(){
+        function throttle(thres){
+            const t0 = throttle.t || 0
+            const t = Date.now()
+            if(t-t0 < thres)
+                return true
+            throttle.t = t
+            return false
+        }
+        return throttle
+    }
+}
+
+
+
+function showStrokes(){
+    const ctx = elem.maincanvas.getContext('2d')
+    const k = .1
+    const W = State.canvasWidth
+    const H = State.canvasHeight
+    ctx.strokeStyle = State.lineColor
+    ctx.lineWidth = 2
+
+
+    var i=0
+    State.strokes.filter(function(st){return st.length>=2}).forEach(function(st){
+        const ix = (i*k)%1.0
+        const iy = (Math.floor(i*k) *k)%1.0
+        const dx = ix*W
+        const dy = iy*H
+
+        ctx.beginPath()
+        ctx.moveTo(st[0].x*k+dx, st[0].y*k+dy)
+        st.slice(1).forEach(function(p){
+            ctx.lineTo(p.x*k+dx, p.y*k+dy)
+        })
+        ctx.stroke()
+
+        i++
+    })
+}
+
+
+
+function assert(b,msg){
+    if(!b)
+        throw new Error(msg ? 'Assertion failed: '+msg : 'Assertion failed.')
+}
+
+
+// alert(123)
+
+
+entry()
+</script>
+
+
+
+</body>
+</html>
